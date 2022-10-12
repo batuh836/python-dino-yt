@@ -1,6 +1,7 @@
 import sys
 import pygame
 import os
+import random
 
 WIDTH = 623
 HEIGHT = 150
@@ -17,24 +18,27 @@ class Dino:
         self.y = 80
         self.texture_num = 0
         self.dy = 4
-        self.gravity = 1.2
-        self.jump_height = 30
+        self.gravity = 1
+        self.jump_height = 10
         self.ground_height = self.y
         self.on_ground = True
         self.jumping = False
         self.falling = False
         self.set_texture()
         self.show()
+        self.rect = self.texture.get_rect()
 
     def update(self, delay):
         #jumping
         if self.jumping:
             self.y -= self.dy
+            self.rect.y = self.y
             if self.y <= self.jump_height:
                     self.fall()
         #falling
         elif self.falling:
             self.y += self.gravity * self.dy
+            self.rect.y = self.y
             if self.y >= self.ground_height:
                 self.stop()
         #walking
@@ -62,6 +66,34 @@ class Dino:
         self.falling = False
         self.on_ground = True
 
+class Cactus:
+    def __init__(self, x) -> None:
+        self.width = 34
+        self.height = 44
+        self.x = x
+        self.y = 80
+        self.set_texture()
+        self.show()
+        self.rect = self.texture.get_rect()
+    
+    def update(self, dx):
+        self.x += dx
+        self.rect.x = self.x
+
+    def show(self):
+        screen.blit(self.texture, (self.x, self.y))
+
+    def set_texture(self):
+        path = os.path.join('assets/images/cactus.png')
+        self.texture = pygame.image.load(path)
+        self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
+
+class Collision:
+    def between(self, obj1, obj2):
+        if obj1.rect.colliderect(obj2.rect):
+            print('collided')
+        else:
+            print('not collided')
 
 class BG:
     def __init__(self, x):
@@ -89,7 +121,32 @@ class Game:
     def __init__(self):
         self.bg = [BG(0), BG(WIDTH)]
         self.dino = Dino()
+        self.obstacles = []
+        self.obstacle_dist = 84
+        self.collision = Collision()
         self.speed = 3
+        self.playing = False
+
+    def start(self):
+        self.playing = True
+
+    def can_spawn(self, delay):
+        return delay % 100 == 0
+
+    def spawn_cactus(self):
+        #list with cactus
+        if len(self.obstacles) > 0:
+            prev_cactus = self.obstacles[-1]
+            x = random.randint(prev_cactus.x + self.dino.width + self.obstacle_dist, 
+                WIDTH + prev_cactus.x + self.dino.width + self.obstacle_dist)
+
+        #empty
+        else:
+            x = random.randint(WIDTH + 100, 1000)
+
+        #create new cactus
+        cactus = Cactus(x)
+        self.obstacles.append(cactus)
 
 def main():
     #objects
@@ -104,12 +161,23 @@ def main():
 
         #bg
         for bg in game.bg:
-                bg.update(-game.speed)
-                bg.show()
+            bg.update(-game.speed)
+            bg.show()
         
         #dino
         dino.update(delay)
         dino.show()
+
+        #cactus
+        if game.can_spawn(delay):
+            game.spawn_cactus()
+
+        for cactus in game.obstacles:
+            cactus.update(-game.speed)
+            cactus.show()
+
+            #collision
+            game.collision.between(dino, cactus)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
