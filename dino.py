@@ -17,29 +17,22 @@ class Dino:
         self.x = 10
         self.y = 80
         self.texture_num = 0
-        self.dy = 4
-        self.gravity = 1
-        self.jump_height = 10
+        self.jump_count = 10
         self.ground_height = self.y
         self.on_ground = True
         self.jumping = False
-        self.falling = False
         self.set_texture()
         self.show()
-        self.rect = self.texture.get_rect()
+        self.set_rect()
 
     def update(self, delay):
         #jumping
         if self.jumping:
-            self.y -= self.dy
-            self.rect.y = self.y
-            if self.y <= self.jump_height:
-                    self.fall()
-        #falling
-        elif self.falling:
-            self.y += self.gravity * self.dy
-            self.rect.y = self.y
-            if self.y >= self.ground_height:
+            if self.jump_count >= -10:
+                self.y -= (self.jump_count * abs(self.jump_count)) * 0.2
+                self.rect.y -= (self.jump_count * abs(self.jump_count)) * 0.2
+                self.jump_count -= 1
+            else: 
                 self.stop()
         #walking
         elif self.on_ground and delay % 4 == 0:
@@ -54,27 +47,29 @@ class Dino:
         self.texture = pygame.image.load(path)
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
+    def set_rect(self):
+        self.rect = self.texture.get_rect()
+        self.rect.width *= 0.5
+        self.rect.height *= 0.5
+
     def jump(self):
+        self.jump_count = 10
         self.jumping = True
         self.on_ground = False
 
-    def fall(self):
-        self.jumping = False
-        self.falling = True
-
     def stop(self):
-        self.falling = False
+        self.jumping = False
         self.on_ground = True
 
 class Cactus:
-    def __init__(self, x) -> None:
+    def __init__(self, x):
         self.width = 34
         self.height = 44
         self.x = x
         self.y = 80
         self.set_texture()
         self.show()
-        self.rect = self.texture.get_rect()
+        self.set_rect()
     
     def update(self, dx):
         self.x += dx
@@ -88,12 +83,16 @@ class Cactus:
         self.texture = pygame.image.load(path)
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
+    def set_rect(self):
+        self.rect = self.texture.get_rect()
+        self.rect.width *= 0.5
+        self.rect.height *= 0.5
+
+
 class Collision:
     def between(self, obj1, obj2):
         if obj1.rect.colliderect(obj2.rect):
-            print('collided')
-        else:
-            print('not collided')
+            return True
 
 class BG:
     def __init__(self, x):
@@ -130,6 +129,9 @@ class Game:
     def start(self):
         self.playing = True
 
+    def over(self):
+        self.playing = False
+
     def can_spawn(self, delay):
         return delay % 100 == 0
 
@@ -156,28 +158,32 @@ def main():
     delay = 0
 
     while True:
-        #delay update
-        delay += 1
 
-        #bg
-        for bg in game.bg:
-            bg.update(-game.speed)
-            bg.show()
-        
-        #dino
-        dino.update(delay)
-        dino.show()
+        if game.playing:
 
-        #cactus
-        if game.can_spawn(delay):
-            game.spawn_cactus()
+            #delay update
+            delay += 1
 
-        for cactus in game.obstacles:
-            cactus.update(-game.speed)
-            cactus.show()
+            #bg
+            for bg in game.bg:
+                bg.update(-game.speed)
+                bg.show()
+            
+            #dino
+            dino.update(delay)
+            dino.show()
 
-            #collision
-            game.collision.between(dino, cactus)
+            #cactus
+            if game.can_spawn(delay):
+                game.spawn_cactus()
+
+            for cactus in game.obstacles:
+                cactus.update(-game.speed)
+                cactus.show()
+
+                #collision
+                if game.collision.between(dino, cactus):
+                    game.over()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -185,6 +191,8 @@ def main():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
+                    if not game.playing:
+                        game.start()
                     if dino.on_ground:
                         dino.jump()
 
