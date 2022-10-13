@@ -13,18 +13,18 @@ pygame.display.set_caption('DINO')
 
 class Dino:
     def __init__(self):
-        self.width = 44
-        self.height = 44
-        self.x = 10
-        self.y = 80
-        self.ground_height = 80
-        self.texture_num = 0
+        self.width = 44.0
+        self.height = 44.0
+        self.x = 10.0
+        self.y = 80.0
+        self.ground_height = 80.0
         self.jump_time = -1.0
         self.jump_duration = 1.0
         self.jump_interval = 0.05
-        self.jump_height = 75
+        self.jump_height = 75.0
         self.on_ground = True
         self.jumping = False
+        self.texture_num = 0
         self.set_texture()
         self.set_rect()
         self.show()
@@ -59,7 +59,7 @@ class Dino:
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
     def set_rect(self):
-        self.rect = pygame.Rect(self.x, self.y, self.width * 0.75, self.height * 0.75)
+        self.rect = pygame.Rect(self.x, self.y, self.width/2, self.height/2)
 
     def jump(self):
         self.jump_time = -1.0
@@ -95,7 +95,6 @@ class Cactus:
     def set_rect(self):
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-
 class Collision:
     def between(self, obj1, obj2):
         if obj1.rect.colliderect(obj2.rect):
@@ -124,6 +123,29 @@ class BG:
         self.texture = pygame.image.load(path)
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
+class Score:
+    def __init__(self, hs):
+        self.high_score = hs
+        self.score = 0
+        self.font = pygame.font.SysFont('monospace', 18)
+        self.color = (0, 0, 0)
+        self.show()
+
+    def update(self, delay):
+        self.score = delay // 10
+        self.check_score()
+
+    def check_score(self):
+        if self.score >= self.high_score:
+            self.high_score = self.score
+
+    def show(self):
+        self.label = self.font.render(f"HI {self.high_score} {self.score}", 1, self.color)
+        label_width = self.label.get_rect().width
+        screen.blit(self.label, (WIDTH - label_width - 10, 10))
+
+    def reset(self):
+        self.score = 0
 
 class Game:
     def __init__(self):
@@ -132,14 +154,18 @@ class Game:
         self.obstacles = []
         self.obstacle_dist = 84
         self.collision = Collision()
+        self.score = Score(0)
         self.speed = 3
-        self.playing = False
+        self.is_playing = False
+        self.is_over = False
 
     def start(self):
-        self.playing = True
+        self.is_playing = True
+        self.is_over = False
 
     def over(self):
-        self.playing = False
+        self.is_playing = False
+        self.is_over = True
 
     def can_spawn(self, delay):
         return delay % 100 == 0
@@ -159,6 +185,9 @@ class Game:
         cactus = Cactus(x)
         self.obstacles.append(cactus)
 
+    def restart(self):
+        self.__init__()
+
 def main():
     #objects
     game = Game()
@@ -167,7 +196,7 @@ def main():
     delay = 0
 
     while True:
-        if game.playing:
+        if game.is_playing:
             #delay update
             delay += 1
 
@@ -192,15 +221,23 @@ def main():
                 if game.collision.between(dino, cactus):
                     game.over()
 
+            game.score.update(delay)
+            game.score.show()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    if not game.playing:
+                    if not game.is_playing and game.is_over:
+                        game.restart()
+                        dino = game.dino
+                        delay = 0
+                    elif not game.is_playing and not game.is_over:
                         game.start()
-                    if dino.on_ground:
+                    
+                    if game.is_playing and not game.is_over and dino.on_ground:
                         dino.jump()
 
         clock.tick(60)
