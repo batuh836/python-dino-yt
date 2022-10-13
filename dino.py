@@ -1,3 +1,4 @@
+import math
 import sys
 import pygame
 import os
@@ -16,25 +17,35 @@ class Dino:
         self.height = 44
         self.x = 10
         self.y = 80
+        self.ground_height = 80
         self.texture_num = 0
-        self.jump_count = 10
-        self.ground_height = self.y
+        self.jump_time = -1.0
+        self.jump_duration = 1.0
+        self.jump_interval = 0.05
+        self.jump_height = 75
         self.on_ground = True
         self.jumping = False
         self.set_texture()
-        self.show()
         self.set_rect()
+        self.show()
 
     def update(self, delay):
         #jumping
         if self.jumping:
-            if self.jump_count >= -10:
-                self.y -= (self.jump_count * abs(self.jump_count)) * 0.2
-                self.rect.y -= (self.jump_count * abs(self.jump_count)) * 0.2
-                self.jump_count -= 1
+            if self.jump_time <= self.jump_duration:
+                #calculate jump values
+                time_elapsed = self.jump_time/self.jump_duration
+                jump_frame = -1 * math.pow(time_elapsed, 2) + 1
+
+                #apply jump values to y
+                self.y = self.ground_height - (jump_frame * self.jump_height)
+                self.rect.y = self.y
+
+                #increment jump time
+                self.jump_time += self.jump_interval
             else: 
                 self.stop()
-        #walking
+        #walking 
         elif self.on_ground and delay % 4 == 0:
             self.texture_num = (self.texture_num + 1) % 3
             self.set_texture()
@@ -48,12 +59,10 @@ class Dino:
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
     def set_rect(self):
-        self.rect = self.texture.get_rect()
-        self.rect.width *= 0.5
-        self.rect.height *= 0.5
+        self.rect = pygame.Rect(self.x, self.y, self.width * 0.75, self.height * 0.75)
 
     def jump(self):
-        self.jump_count = 10
+        self.jump_time = -1.0
         self.jumping = True
         self.on_ground = False
 
@@ -68,8 +77,8 @@ class Cactus:
         self.x = x
         self.y = 80
         self.set_texture()
-        self.show()
         self.set_rect()
+        self.show()
     
     def update(self, dx):
         self.x += dx
@@ -84,14 +93,14 @@ class Cactus:
         self.texture = pygame.transform.scale(self.texture, (self.width, self.height))
 
     def set_rect(self):
-        self.rect = self.texture.get_rect()
-        self.rect.width *= 0.5
-        self.rect.height *= 0.5
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
 
 class Collision:
     def between(self, obj1, obj2):
         if obj1.rect.colliderect(obj2.rect):
+            print(f"player x = {obj1.rect.x}")
+            print(f"player y = {obj1.rect.y}")
             return True
 
 class BG:
@@ -158,9 +167,7 @@ def main():
     delay = 0
 
     while True:
-
         if game.playing:
-
             #delay update
             delay += 1
 
